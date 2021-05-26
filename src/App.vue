@@ -5,6 +5,7 @@
         <el-form-item :key="item.id" :label="item.label" :prop="item.id">
           <template v-if="item.type === 'input'">
               <el-input v-model="userInfo[item.id]" :placeholder="item.label">
+                <template v-if="item.prefix" slot="prepend">{{item.prefix}}</template>
               </el-input>
           </template>
           <template v-if="item.type === 'select'">
@@ -46,6 +47,11 @@ export default {
           id: 'name',
           label: '姓名',
           type: 'input'
+        }, {
+          id: 'phoneNumber',
+          label: '手机号',
+          type: 'input',
+          prefix: '+86'
         },
         {
           id: 'address',
@@ -67,6 +73,9 @@ export default {
       rules: {
         name: [
           { required: true, message: '请输入姓名', trigger: 'blur' }
+        ],
+        phoneNumber: [
+          { required: true, message: '请输入手机号', trigger: 'blur' }
         ],
         address: [
           { required: true, message: '请输入地址', trigger: 'blur' }
