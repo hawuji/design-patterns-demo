@@ -28,105 +28,57 @@
 </template>
 
 <script>
-
-const bankListA = [
-  { label: '(001)中国人民银行', value: '001' },
-  { label: '(002)中国工商银行', value: '002' }
-]
-const bankListB = [
-  { label: '(003)中国建设银行', value: '003' },
-  { label: '(004)中国商业银行', value: '004' }
-]
+import { getField } from './group/index'
 
 export default {
   name: 'APP',
   data () {
-    var checkCardNumber = (rule, value, callback) => {
-      const code = this.userInfo.bankCode
-      if (!code) return
-      // 这里只做简单的正则校验，实际的校验规则可能更复杂
-      const regs = {
-        '001': /^\d{12}$/, // 12位长度
-        '002': /^\d{14}$/, // 14位长度
-        '003': /^\d{8,12}$/, // 8-12位长度
-        '004': /^\d{10}$/ // 10位长度
-      }
-      const reg = regs[code]
-      if (!reg.test(value)) {
-        callback(new Error('请输入正确的银行卡号'))
-      } else {
-        callback()
-      }
-    }
     return {
-      userInfo: {
-        name: '',
-        address: '',
-        cardNumber: ''
-      },
+      userInfo: {},
       userGroup: '',
-      formFields: [
-        {
-          id: 'name',
-          label: '姓名',
-          type: 'input'
-        }, {
-          id: 'phoneNumber',
-          label: '手机号',
-          type: 'input',
-          prefix: '+86'
-        },
-        {
-          id: 'address',
-          label: '地址',
-          type: 'input'
-        },
-        {
-          id: 'bankCode',
-          label: '银行码',
-          type: 'select',
-          list: []
-        },
-        {
-          id: 'cardNumber',
-          label: '银行卡号',
-          type: 'input'
-        }
-      ],
-      rules: {
-        name: [
-          { required: true, message: '请输入姓名', trigger: 'blur' }
-        ],
-        phoneNumber: [
-          { required: true, message: '请输入手机号', trigger: 'blur' }
-        ],
-        address: [
-          { required: true, message: '请输入地址', trigger: 'blur' }
-        ],
-        bankCode: [
-          { required: true, message: '请选择银行码', trigger: 'change' }
-        ],
-        cardNumber: [
-          { required: true, message: '请输入银行卡号', trigger: 'blur' },
-          { validator: checkCardNumber, trigger: 'blur' }
-        ]
-      }
+      formFields: [],
+      rules: {}
     }
   },
   methods: {
-    initFields () {
+    // 获取分组用户所需的表单字段
+    async initFields () {
       this.userGroup = sessionStorage.getItem('userGroup') || 'B' // 模拟从接口获取用户分组信息
-      const indexBankCode = this.formFields.findIndex(item => item.id === 'bankCode')
-      const indexPhone = this.formFields.findIndex(item => item.id === 'phoneNumber')
-      // 对银行码列表和手机事情前缀做处理
-      if (this.userGroup === 'A') {
-        this.formFields[indexBankCode].list = bankListA
-        this.formFields[indexPhone].prefix = '+86'
-      } else {
-        this.formFields[indexBankCode].list = bankListB
-        this.formFields[indexPhone].prefix = '+57'
+      let fields = null
+      try {
+        // 这里就是使用策略模式获取对应的表单字段
+        fields = await getField(this.userGroup)
+      } catch {
+        console.log('加载失败')
       }
+      this.initData(fields)
+      this.formFields = fields
     },
+
+    // 设置 userInfo 和 rules
+    initData (fields) {
+      const info = {}
+      fields.forEach(item => {
+        info[item.id] = ''
+        if (item.rule) {
+          /* 由于 Element UI 自定义的验证函数无法传参，所以要对验证函数进行修改
+           * 能够在验证函数内部访问当前表单数据，可根据实际业务进行处理此处逻辑
+          */
+          if (Array.isArray(item.rule)) {
+            item.rule.forEach(son => {
+              if (typeof son.validator === 'function') {
+                son.validator = son.validator.bind(this.userInfo)
+              }
+            })
+          }
+          this.rules[item.id] = item.rule
+        }
+      })
+      // 对 userInfo 进行赋值，实现双向绑定
+      this.userInfo = info
+    },
+
+    // 提交数据
     saveDate (formName) {
       this.$refs[formName].validate((valid) => {
         if (valid) {
