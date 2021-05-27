@@ -21,7 +21,7 @@
         </el-form-item>
       </template>
       <el-form-item>
-        <el-button type="primary" @click="saveDate('userInfo')">立即创建</el-button>
+        <el-button type="primary" @click="saveDate('userInfo')">保存</el-button>
       </el-form-item>
     </el-form>
   </div>
@@ -29,19 +29,42 @@
 
 <script>
 
-const bankList = [
+const bankListA = [
   { label: '(001)中国人民银行', value: '001' },
   { label: '(002)中国工商银行', value: '002' }
 ]
+const bankListB = [
+  { label: '(003)中国建设银行', value: '003' },
+  { label: '(004)中国商业银行', value: '004' }
+]
+
 export default {
   name: 'APP',
   data () {
+    var checkCardNumber = (rule, value, callback) => {
+      const code = this.userInfo.bankCode
+      if (!code) return
+      // 这里只做简单的正则校验，实际的校验规则可能更复杂
+      const regs = {
+        '001': /^\d{12}$/, // 12位长度
+        '002': /^\d{14}$/, // 14位长度
+        '003': /^\d{8,12}$/, // 8-12位长度
+        '004': /^\d{10}$/ // 10位长度
+      }
+      const reg = regs[code]
+      if (!reg.test(value)) {
+        callback(new Error('请输入正确的银行卡号'))
+      } else {
+        callback()
+      }
+    }
     return {
       userInfo: {
         name: '',
         address: '',
         cardNumber: ''
       },
+      userGroup: '',
       formFields: [
         {
           id: 'name',
@@ -62,7 +85,7 @@ export default {
           id: 'bankCode',
           label: '银行码',
           type: 'select',
-          list: bankList
+          list: []
         },
         {
           id: 'cardNumber',
@@ -84,12 +107,26 @@ export default {
           { required: true, message: '请选择银行码', trigger: 'change' }
         ],
         cardNumber: [
-          { required: true, message: '请输入银行卡号', trigger: 'blur' }
+          { required: true, message: '请输入银行卡号', trigger: 'blur' },
+          { validator: checkCardNumber, trigger: 'blur' }
         ]
       }
     }
   },
   methods: {
+    initFields () {
+      this.userGroup = sessionStorage.getItem('userGroup') || 'B' // 模拟从接口获取用户分组信息
+      const indexBankCode = this.formFields.findIndex(item => item.id === 'bankCode')
+      const indexPhone = this.formFields.findIndex(item => item.id === 'phoneNumber')
+      // 对银行码列表和手机事情前缀做处理
+      if (this.userGroup === 'A') {
+        this.formFields[indexBankCode].list = bankListA
+        this.formFields[indexPhone].prefix = '+86'
+      } else {
+        this.formFields[indexBankCode].list = bankListB
+        this.formFields[indexPhone].prefix = '+57'
+      }
+    },
     saveDate (formName) {
       this.$refs[formName].validate((valid) => {
         if (valid) {
@@ -100,6 +137,9 @@ export default {
         }
       })
     }
+  },
+  mounted () {
+    this.initFields()
   }
 }
 </script>
